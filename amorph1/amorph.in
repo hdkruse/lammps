@@ -14,44 +14,36 @@ mass 2 15.9994
 neigh_modify delay 0 every 1 check yes
 
 
-#variable boxlenght equal 100
-#variable boxheight equal 50
-#variable boxdepth equal 50
-#variable rigidheight equal 5
-#variable toplid equal (${boxheight}-${rigidheight})
-#variable splitdepth equal 10
-#variable ymid equal ${boxheight}/2
-#variable zmid equal ${boxdepth}/2
+variable boxheight equal 50
+variable rigidheight equal 5
+variable toplid equal (${boxheight}-${rigidheight})
 
-#region hardbot plane 0 ${rigidheight} 0 0 -1 0 
-#region hardtop plane 0 ${toplid} 0 0 1 0
-#region el1 ellipsoid  20 ${ymid} ${zmid} 10 5 10  
-#region el2 ellipsoid  40 ${ymid} ${zmid} 10 5 10 
-#region el3 ellipsoid  60 ${ymid} ${zmid} 10 5 10
-#region el4 ellipsoid  80 ${ymid} ${zmid} 10 5 10
-#region plane1 plane ${splitdepth} ${ymid} ${zmid} -0.17 0.98 0
-#region plane2 plane ${splitdepth} ${ymid} ${zmid} -0.17 -0.98 0
-#region split intersect 2 plane1 plane2
+region hardbot plane 0 ${rigidheight} 0 0 -1 0 
+region hardtop plane 0 ${toplid} 0 0 1 0
 
-#delete_atoms region el1
-#delete_atoms region el2
-#delete_atoms region el3
-#delete_atoms region el4
-#delete_atoms region split
+group hardtop region hardtop
+group hardbot region hardbot
+group sides union hardtop hardbot
+group midten subtract all sides
 
-thermo_style custom pxx pyy pzz time lx ly lz 
+thermo_style custom step pxx pyy pzz time lx ly lz 
 change_box all x scale 1.05
-# litt ekstra boks foran og bak
-# Legge på wall reflect foran og bak
+#ikke nvt på hver side men bruk fix move til å strekke dem istedet
 change_box all boundary m p p 
 #velocity all create 300.0 277387 mom yes
+change_box all y scale 2
+compute comtop hardtop com
+compute combot hardbot com
+variable dist equal "c_comtop[2]-c_combot[2]"
 
 timestep 0.002
-fix nvt all nvt temp 300 300 1.0 
+fix nvt midten nvt temp 300 300 1.0 
 fix walls all wall/reflect xlo -10.0 xhi 110 
 #fix npt all npt temp 300 300 1.0 z 7500.0 7500.0 1.0 x 7500 7500 1.0
 run 100
-fix deform all deform 1 y scale 1.6 remap x
-run 2000
-unfix deform
-run 10000
+fix stretchup hardtop move linear NULL 1 NULL
+fix stretchdown hardbot move linear NULL -1 NULL
+run 6000
+unfix stretchup
+unfix stretchdown
+run 1000
